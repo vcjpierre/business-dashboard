@@ -52,7 +52,7 @@ router.delete("/:id", async (req: AuthRequest, res: Response) => {
   try {
     await db.execute({
       sql: "DELETE FROM expenses WHERE id = ? AND user_id = ?",
-      args: [req.params.id, req.userId!],
+      args: [String(req.params.id), req.userId!],
     })
     res.json({ success: true })
   } catch (error) {
