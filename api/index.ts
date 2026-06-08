@@ -1,24 +1,22 @@
-import type { Request, Response } from "express"
-
-let handler: ((req: Request, res: Response) => void) | null = null
+let handler: ((req: any, res: any) => void) | null = null
 
 async function init() {
-  const { createApp } = await import("../server/src/index")
-  const { initDatabase } = await import("../server/src/db")
-  const app = createApp()
+  const mod = await import("../server/src/index")
+  const dbMod = await import("../server/src/db")
+  const app = mod.createApp()
 
   try {
-    await initDatabase()
+    await dbMod.initDatabase()
   } catch (e) {
     console.error("DB init failed (non-fatal):", e)
   }
 
-  handler = (req: Request, res: Response) => {
+  handler = (req: any, res: any) => {
     app(req, res)
   }
 }
 
-export default async function apiHandler(req: Request, res: Response) {
+export default async function apiHandler(req: any, res: any) {
   if (!handler) {
     await init()
   }
