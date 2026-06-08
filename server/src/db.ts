@@ -16,7 +16,7 @@ async function createHttpClient() {
           stmt: {
             sql: config.sql,
             args: (config.args || []).map((a: any) => ({
-              type: a === null ? "null" : typeof a === "number" ? "real" : "text",
+              type: a === null ? "null" : typeof a === "number" ? "float" : "text",
               value: a,
             })),
           },
