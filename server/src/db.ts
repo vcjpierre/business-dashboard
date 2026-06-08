@@ -1,14 +1,34 @@
-import { createClient } from "@libsql/client"
-import dotenv from "dotenv"
+import { createClient, type Client } from "@libsql/client"
 
-dotenv.config({ path: "../.env" })
+let _db: Client | null = null
+let _error: Error | null = null
 
-const url = process.env.TURSO_DATABASE_URL || "file:local.db"
-const authToken = process.env.TURSO_AUTH_TOKEN
+export function getDb(): Client {
+  if (_db) return _db
+  if (_error) throw _error
 
-export const db = createClient({
-  url,
-  authToken: authToken || undefined,
+  const url = process.env.TURSO_DATABASE_URL
+  if (!url) {
+    _error = new Error("TURSO_DATABASE_URL is not configured")
+    throw _error
+  }
+
+  const authToken = process.env.TURSO_AUTH_TOKEN
+
+  _db = createClient({
+    url,
+    authToken: authToken || undefined,
+  })
+
+  return _db
+}
+
+export const db = new Proxy({} as Client, {
+  get(_, prop) {
+    const client = getDb()
+    const value = client[prop as keyof Client]
+    return typeof value === "function" ? value.bind(client) : value
+  },
 })
 
 export async function initDatabase() {

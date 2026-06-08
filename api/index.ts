@@ -1,9 +1,26 @@
-import { createApp } from "../server/src/index"
-import { initDatabase } from "../server/src/db"
+import type { Request, Response } from "express"
 
-const app = createApp()
+let handler: ((req: Request, res: Response) => void) | null = null
 
-// Inicializar DB en cada cold start de serverless
-await initDatabase()
+async function init() {
+  const { createApp } = await import("../server/src/index")
+  const { initDatabase } = await import("../server/src/db")
+  const app = createApp()
 
-export default app
+  try {
+    await initDatabase()
+  } catch (e) {
+    console.error("DB init failed (non-fatal):", e)
+  }
+
+  handler = (req: Request, res: Response) => {
+    app(req, res)
+  }
+}
+
+export default async function apiHandler(req: Request, res: Response) {
+  if (!handler) {
+    await init()
+  }
+  handler!(req, res)
+}
