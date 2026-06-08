@@ -1,24 +1,27 @@
-let handler: ((req: any, res: any) => void) | null = null
+import express from "express"
+import cors from "cors"
+import { initDatabase } from "../server/src/db.js"
+import authRoutes from "../server/src/routes/auth.js"
+import incomeRoutes from "../server/src/routes/incomes.js"
+import expenseRoutes from "../server/src/routes/expenses.js"
+import customerRoutes from "../server/src/routes/customers.js"
+import dashboardRoutes from "../server/src/routes/dashboard.js"
 
-async function init() {
-  const mod = await import("../server/src/index")
-  const dbMod = await import("../server/src/db")
-  const app = mod.createApp()
+const app = express()
 
-  try {
-    await dbMod.initDatabase()
-  } catch (e) {
-    console.error("DB init failed (non-fatal):", e)
-  }
+app.use(cors({ origin: "*", credentials: true }))
+app.use(express.json())
 
-  handler = (req: any, res: any) => {
-    app(req, res)
-  }
-}
+app.use("/api/auth", authRoutes)
+app.use("/api/incomes", incomeRoutes)
+app.use("/api/expenses", expenseRoutes)
+app.use("/api/customers", customerRoutes)
+app.use("/api/dashboard", dashboardRoutes)
 
-export default async function apiHandler(req: any, res: any) {
-  if (!handler) {
-    await init()
-  }
-  handler!(req, res)
-}
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok" })
+})
+
+await initDatabase()
+
+export default app
