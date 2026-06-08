@@ -1,37 +1,36 @@
-import { createClient, type Client } from "@libsql/client"
+import type { Client } from "@libsql/client"
 
 let _db: Client | null = null
-let _error: Error | null = null
+let _dbPromise: Promise<Client> | null = null
 
-export function getDb(): Client {
+async function getDb(): Promise<Client> {
   if (_db) return _db
-  if (_error) throw _error
+  if (_dbPromise) return _dbPromise
 
-  const url = process.env.TURSO_DATABASE_URL
-  if (!url) {
-    _error = new Error("TURSO_DATABASE_URL is not configured")
-    throw _error
-  }
+  _dbPromise = (async () => {
+    const url = process.env.TURSO_DATABASE_URL
+    if (!url) throw new Error("TURSO_DATABASE_URL is not configured")
+    const authToken = process.env.TURSO_AUTH_TOKEN
 
-  const authToken = process.env.TURSO_AUTH_TOKEN
+    const { createClient } = await import("@libsql/client")
+    _db = createClient({ url, authToken: authToken || undefined })
+    return _db
+  })()
 
-  _db = createClient({
-    url,
-    authToken: authToken || undefined,
-  })
-
-  return _db
+  return _dbPromise
 }
 
 export const db = new Proxy({} as Client, {
-  get(_, prop) {
-    const client = getDb()
-    const value = client[prop as keyof Client]
-    return typeof value === "function" ? value.bind(client) : value
+  get(_, prop: string) {
+    return async (...args: any[]) => {
+      const client = await getDb()
+      return (client as any)[prop](...args)
+    }
   },
 })
 
 export async function initDatabase() {
+  const db = await getDb()
   await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
